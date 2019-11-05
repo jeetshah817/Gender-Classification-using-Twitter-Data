@@ -1,61 +1,62 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
 Created on Mon Sep  2 12:03:26 2019
 
 @author: Jeet
 """
-# linear algebra
+### IMPORTING PACKAGES
+# Basic operations
 import numpy as np
-# data processing, CSV file I/O (e.g. pd.read_csv)
 import pandas as pd
 
-# we'll want this for plotting
+# Plotting data
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# we'll want this for text manipulation
+# Text manipulation
 import re
-# function to remove stopwords
 from nltk.corpus import stopwords
 
-# function for transforming documents into counts
+# Converting text data to numeric data
 from sklearn.feature_extraction.text import CountVectorizer
-# function for encoding categories
+
+# Encoding categories
 from sklearn.preprocessing import LabelEncoder
 
-# function to split the data for cross-validation
+# Cross-validation
 from sklearn.model_selection import train_test_split
 
-# the Naive Bayes model
+# Naive Bayes
 from sklearn.naive_bayes import MultinomialNB
-# random forest
+
+# Random forest model
 from sklearn.ensemble import RandomForestClassifier
-# logistic regression model
+
+# Logistic regression model
 from sklearn.linear_model import LogisticRegression
 
-# have to use latin1 even though it results in a lot of dead characters
+### 
+# Importing data
 twigen = pd.read_csv("/Users/Jeet/Desktop/gender-classifier-DFE-791531.csv", encoding='latin1')
 sorted(twigen)
+
+# Here we consider data points whoes confidence is equal to 1
 twigen = twigen[twigen['gender:confidence'] == 1]
 twigen = twigen[twigen['gender'] != 'unknown']
 twigen.head()
 
+# Cleaning text data
 def normalize_text(s):
     # just in case
     s = str(s)
     s = s.lower()
-    
     s = re.sub('\s\W',' ',s) # remove punctuation that is not word-internal (e.g., hyphens, apostrophes)
     s = re.sub('\W\s',' ',s)
-    
     s = re.sub('\s+',' ',s) # make sure we didn't introduce any double spaces
     return s
 
 twigen['text_norm'] = [normalize_text(s) for s in twigen['text']]
 twigen['description_norm'] = [normalize_text(s) for s in twigen['description']]
 
-# removing stopwords
+# Removing stopwords from text data
 import nltk
 nltk.download('stopwords')
 stop = set(stopwords.words('english'))
@@ -70,7 +71,7 @@ def list(k): # to convert array data to string data
 twigen['text_norm_list'] = [list(k) for k in twigen['text_norm']]
 twigen['text_norm_list']
 
-# visulizations
+# Basic visulization on text data
 Male = twigen[twigen['gender'] == 'male']
 Female = twigen[twigen['gender'] == 'female']
 Brand = twigen[twigen['gender'] == 'brand']
@@ -86,39 +87,36 @@ sns.countplot(twigen['gender'], label = 'Gender')
 sns.barplot (x = 'gender', y = 'fav_number',data = twigen)
 sns.barplot (x = 'gender', y = 'retweet_count',data = twigen)
 
-# pull the data into vectors
+# Converting text data to numeric data
 vectorizer = CountVectorizer()
 x = vectorizer.fit_transform(twigen['text_norm_list'])
 print(x)
 
-# encoding dependent variable
+# Encoding Dependent variable
 encoder = LabelEncoder()
 y = encoder.fit_transform(twigen['gender'])
 df = pd.DataFrame(y)
 
-# split into train and test sets
+# Split into train and test sets
 x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
 print(x_train.shape)
 print(y_train.shape)
 print(x_test.shape)
 print(y_test.shape)
 
-# naive bayes model
+# Naive bayes model
 nb = MultinomialNB()
 nb.fit(x_train, y_train)
 print("accuracy:", nb.score(x_test, y_test))
 
-###print('Variance % for Naive Bayes with : ' + str(nb.score(x_test, y_test)*100)+ ' %')
-###print("Mean squared error: %.2f" % np.mean((nb.predict(x_test) - y_test) ** 2))
-
-# random forest
+# Random forest model
 rf = RandomForestClassifier(n_estimators = 100)
 rf.fit(x_train,y_train)
 print("accuracy: ", rf.score(x_test,y_test))
 
-#logistic regression
+# Logistic regression model
 lr = LogisticRegression()
 lr.fit(x_train, y_train)
 print("accuracy: ", lr.score(x_test,y_test))
 
-
+### Hence for the above data we can conclude that Naive Bayes is the best fir to predict the gender of the tweets with 58.27% accuracy.
