@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Sep  2 12:03:26 2019
+
+@author: Jeet
+"""
+# linear algebra
+import numpy as np
+# data processing, CSV file I/O (e.g. pd.read_csv)
+import pandas as pd
+
+# we'll want this for plotting
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# we'll want this for text manipulation
+import re
+# function to remove stopwords
+from nltk.corpus import stopwords
+
+# function for transforming documents into counts
+from sklearn.feature_extraction.text import CountVectorizer
+# function for encoding categories
+from sklearn.preprocessing import LabelEncoder
+
+# function to split the data for cross-validation
+from sklearn.model_selection import train_test_split
+
+# the Naive Bayes model
+from sklearn.naive_bayes import MultinomialNB
+# random forest
+from sklearn.ensemble import RandomForestClassifier
+# logistic regression model
+from sklearn.linear_model import LogisticRegression
+
+# have to use latin1 even though it results in a lot of dead characters
+twigen = pd.read_csv("/Users/Jeet/Desktop/gender-classifier-DFE-791531.csv", encoding='latin1')
+sorted(twigen)
+twigen = twigen[twigen['gender:confidence'] == 1]
+twigen = twigen[twigen['gender'] != 'unknown']
+twigen.head()
+
+def normalize_text(s):
+    # just in case
+    s = str(s)
+    s = s.lower()
+    
+    s = re.sub('\s\W',' ',s) # remove punctuation that is not word-internal (e.g., hyphens, apostrophes)
+    s = re.sub('\W\s',' ',s)
+    
+    s = re.sub('\s+',' ',s) # make sure we didn't introduce any double spaces
+    return s
+
+twigen['text_norm'] = [normalize_text(s) for s in twigen['text']]
+twigen['description_norm'] = [normalize_text(s) for s in twigen['description']]
+
+# removing stopwords
+import nltk
+nltk.download('stopwords')
+stop = set(stopwords.words('english'))
+twigen['text_norm'] = twigen['text_norm'].str.lower().str.split()
+twigen['text_norm'] = twigen['text_norm'].apply(lambda x : [item for item in x if item not in stop])
+twigen['text_norm']
+
+def list(k): # to convert array data to string data
+    k = " ".join(k)
+    return k
+
+twigen['text_norm_list'] = [list(k) for k in twigen['text_norm']]
+twigen['text_norm_list']
+
+# visulizations
+Male = twigen[twigen['gender'] == 'male']
+Female = twigen[twigen['gender'] == 'female']
+Brand = twigen[twigen['gender'] == 'brand']
+Male_Words = pd.Series(' '.join(Male['text_norm'].astype(str)).lower().split(" ")).value_counts()[:20]
+Brand_words = pd.Series(' '.join(Brand['text_norm'].astype(str)).lower().split(" ")).value_counts()[:10]
+Female_Words = pd.Series(' '.join(Female['text_norm'].astype(str)).lower().split(" ")).value_counts()[:20]
+
+Female_Words.plot(kind='bar',stacked=True, colormap='Pastel1')
+Male_Words.plot(kind='bar',stacked=True, colormap='tab10')
+Brand_words.plot(kind='bar',stacked=True, colormap='Pastel2')
+
+sns.countplot(twigen['gender'], label = 'Gender')
+sns.barplot (x = 'gender', y = 'fav_number',data = twigen)
+sns.barplot (x = 'gender', y = 'retweet_count',data = twigen)
+
+# pull the data into vectors
+vectorizer = CountVectorizer()
+x = vectorizer.fit_transform(twigen['text_norm_list'])
+print(x)
+
+# encoding dependent variable
+encoder = LabelEncoder()
+y = encoder.fit_transform(twigen['gender'])
+df = pd.DataFrame(y)
+
+# split into train and test sets
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+print(x_train.shape)
+print(y_train.shape)
+print(x_test.shape)
+print(y_test.shape)
+
+# naive bayes model
+nb = MultinomialNB()
+nb.fit(x_train, y_train)
+print("accuracy:", nb.score(x_test, y_test))
+
+###print('Variance % for Naive Bayes with : ' + str(nb.score(x_test, y_test)*100)+ ' %')
+###print("Mean squared error: %.2f" % np.mean((nb.predict(x_test) - y_test) ** 2))
+
+# random forest
+rf = RandomForestClassifier(n_estimators = 100)
+rf.fit(x_train,y_train)
+print("accuracy: ", rf.score(x_test,y_test))
+
+#logistic regression
+lr = LogisticRegression()
+lr.fit(x_train, y_train)
+print("accuracy: ", lr.score(x_test,y_test))
+
+
